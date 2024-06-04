@@ -4,6 +4,8 @@ import os
 
 base_url = 'http://127.0.0.1:8000/api/v2/knowledge-bases'
 assistant_url = 'http://127.0.0.1:8000/api/v2/assistants'
+textfile_url = 'http://127.0.0.1:8000/api/v2/text-files'
+chat_url = 'http://127.0.0.1:8000/api/v2/threads/begin/sync'
 
 
 def base_list():
@@ -143,3 +145,70 @@ def assistant_delete(a_id):
     target_assistant = os.path.join(assistant_url, str(a_id))
     response = requests.delete(target_assistant, headers=headers)
     return response.status_code, response.json()
+
+
+def textfile_create(kd_id, files):
+    headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer ' + str(st.session_state.token),
+        'Content-Type': 'multipart/form-data'
+    }
+    files_api = []
+    for _, file in files.items():
+        files_api.append(('files', (file.name, file.read(), file.type)))
+    st.text(files_api)
+    target_base = os.path.join(base_url, str(kd_id), 'text-files')
+    response = requests.post(target_base, headers=headers, files=files_api)
+    st.text(response)
+    # return response.status_code, response.json()
+
+
+def textfile_retrieve(tf_id):
+    headers = {
+        'accept': 'application/json',
+        'Authorization': 'Bearer ' + str(st.session_state.token)
+        }
+
+    target_file = os.path.join(textfile_url, tf_id)
+
+    response = requests.get(target_file, headers=headers)
+    if response.status_code == 200:
+        return [response.status_code, response.json()]
+    else:
+        return [response.status_code]
+
+
+def textfile_delete(tf_id):
+    headers = {
+        'accept': 'application/json',
+        'Authorization': 'Bearer ' + str(st.session_state.token)
+        }
+
+    target_file = os.path.join(textfile_url, tf_id)
+
+    response = requests.delete(target_file, headers=headers)
+    return response.status_code, response.json()
+
+
+def chat(assistant_id, user_id, prompt):
+    headers = {
+        'accept': '*/*',
+        'Authorization': 'Bearer ' + str(st.session_state.token),
+        'Content-Type': 'application/json'
+        }
+
+    data = {
+        "assistant_id": assistant_id,
+        "human_prompt": prompt,
+        "end_user_id": str(user_id)
+    }
+
+    response = requests.post(chat_url, headers=headers, json=data)
+    data = response.json()
+    content_role_4 = next((message['content'] for message in data['messages']
+                           if message['role'] == 3), None)
+
+    if response.status_code == 200:
+        return [response.status_code, content_role_4]
+    else:
+        return [response.status_code]
